@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>🛍️ Retail Sentiment Analyzer</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 850px;
+            width: 100%;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #222;
+            margin-bottom: 25px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            resize: none;
+        }
+
+        button {
+            background-color: #28a745;
+            color: white;
+            font-size: 16px;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        .result {
+            margin-top: 25px;
+            padding: 15px;
+            border-left: 6px solid #2196F3;
+            background-color: #f1f8ff;
+            border-radius: 8px;
+        }
+
+        .positive { color: green; }
+        .neutral { color: #555; }
+        .negative { color: red; }
+
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #ccc;
+            text-align: left;
+        }
+
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 13px;
+            color: #888;
+        }
+
+        .download {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .download a {
+            text-decoration: none;
+            color: #007bff;
+            font-weight: bold;
+        }
+
+        hr {
+            margin: 30px 0;
+        }
+
+        .kpi-cards {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .kpi-cards > div {
+            flex: 1;
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .pos-card { background: #d4edda; }
+        .neu-card { background: #f8f9fa; }
+        .neg-card { background: #f8d7da; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🛍️ Retail Sentiment Analyzer</h1>
+
+
+    <form method="post">
+        <label><strong>📢 Enter Single Feedback:</strong></label><br><br>
+        <textarea name="feedback" required placeholder="Type customer feedback here..."></textarea><br>
+        <button type="submit">🔍 Predict Single Sentiment</button>
+    </form>
+
+    <hr>
+
+
+    <form method="post" enctype="multipart/form-data">
+        <label><strong>📄 Or Upload CSV File:</strong> (Must have a 'text' column)</label><br><br>
+        <input type="file" name="file" accept=".csv" required>
+        <button type="submit">📥 Upload and Predict</button>
+    </form>
+
+  
+    {% if predictions %}
+        <div class="result">
+            {% for text, sentiment in predictions %}
+                <strong>Feedback:</strong> {{ text }}<br>
+                <strong>Sentiment:</strong>
+                {% if sentiment == 'Positive' %}
+                    <span class="positive">Positive 😊</span>
+                {% elif sentiment == 'Neutral' %}
+                    <span class="neutral">Neutral 😐</span>
+                {% elif sentiment == 'Negative' %}
+                    <span class="negative">Negative 🙁</span>
+                {% else %}
+                    {{ sentiment }}
+                {% endif %}
+            {% endfor %}
+        </div>
+    {% endif %}
+
+
+    {% if metrics %}
+        <h3>📈 Sentiment Metrics</h3>
+        <div class="kpi-cards">
+            <div class="pos-card">
+                <h4>😊 Positive</h4>
+                <p><strong>{{ metrics['Positive'] }}</strong></p>
+            </div>
+            <div class="neu-card">
+                <h4>😐 Neutral</h4>
+                <p><strong>{{ metrics['Neutral'] }}</strong></p>
+            </div>
+            <div class="neg-card">
+                <h4>🙁 Negative</h4>
+                <p><strong>{{ metrics['Negative'] }}</strong></p>
+            </div>
+        </div>
+    {% endif %}
+
+ 
+    {% if table_data %}
+        <h3>📋 Results</h3>
+        <table>
+            <tr><th>Text</th><th>Sentiment</th></tr>
+            {% for row in table_data %}
+                <tr><td>{{ row[0] }}</td><td>{{ row[1] }}</td></tr>
+            {% endfor %}
+        </table>
+    {% endif %}
+
+    {% if chart_data %}
+        <h3>📊 Sentiment Distribution</h3>
+        <canvas id="sentimentChart" width="400" height="200"></canvas>
+        <canvas id="sentimentPie" width="300" height="300" style="margin-top: 30px;"></canvas>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+            const chartData = {{ chart_data | safe }};
+            const ctx = document.getElementById('sentimentChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(chartData),
+                    datasets: [{
+                        label: 'Sentiment Count',
+                        data: Object.values(chartData),
+                        backgroundColor: ['#28a745', '#6c757d', '#dc3545']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: { y: { beginAtZero: true, precision: 0 } }
+                }
+            });
+
+            const pie = document.getElementById('sentimentPie').getContext('2d');
+            new Chart(pie, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(chartData),
+                    datasets: [{
+                        data: Object.values(chartData),
+                        backgroundColor: ['#28a745', '#6c757d', '#dc3545']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        </script>
+    {% endif %}
+
+   
+    {% if table_data %}
+        <h3>☁️ Word Cloud of Feedback</h3>
+        <img src="{{ url_for('static', filename='wordcloud.png') }}" width="100%" style="max-height: 400px; object-fit: contain;">
+    {% endif %}
+
+    {% if table_data %}
+        <div class="download">
+            <a href="{{ url_for('static', filename='predicted_sentiment.csv') }}" download>
+                ⬇️ Download Predicted CSV
+            </a>
+        </div>
+    {% endif %}
+
+    
+</div>
+</body>
+</html>
